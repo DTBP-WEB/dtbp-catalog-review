@@ -48,3 +48,13 @@ Hosted values are managed through Sites, not committed files: `REVIEW_OWNER_EMAI
 Existing local approvals remain in the original project. Remote decisions form a separate history; reconcile exact identifiers and fingerprints before applying any future website changes.
 
 Saved for later is a display-only classification of a matching saved `pending` decision. Unreviewed items have no matching saved decision. This distinction requires no migration, reimport or rewriting existing choices, and keeps older open tabs and exports compatible. Stale fingerprints still require review; a deferred decision is not approval.
+
+## Slow-selling item folders
+
+The separate owner-only `/review/sales` report groups active stocked inFlow products into non-overlapping 6–11, 12–17 and 18+ calendar-month folders. Each row shows the latest recorded sales activity date and a point-in-time stock status, never a price or stock quantity. Missing/future-dated qualifying history is separated for checking. If no sale is found in available history, the date stays null; the folder uses the product record's age and says so. It does not prove no lifetime sales or how long stock was unavailable.
+
+`scripts/prepare-sales-folders.mjs <source-directory> <private-output-directory>` prepares the owner-upload JSON and three printable local folders from complete read-only identity/stock and full sales-history extracts. Generated data stays under ignored `private/`, never in public assets, migrations or Git. Titles and brands are the recorded inFlow values, not auto-approved replacements.
+
+Migration `0001_parallel_prodigy.sql` only creates the independent `review_sales_snapshots` table. The owner may load the prepared JSON on the sales page; `/api/sales-review` verifies owner access, readiness, origin, bounded input and a safe field projection. Evidence snapshots are append-only with stale-tab conflict protection. They never write `review_items`, `review_decisions`, `review_history` or `review_state`; the sealed initial importer stays sealed. Existing choices do not disappear from the original queues.
+
+`tests/sales-folders.test.mjs` checks calendar boundaries, missing dates, safe data projection and SQLite preservation. `tests/sales-client.test.mjs` exercises real client handlers with invented data, including printing all filtered items and retaining the previous report after failed uploads. `tests/runtime-sales-local.mjs` imports the prepared private report on loopback port 5540 only and confirms the existing local decision/history export is unchanged. It must never target the hosted service. No browser visual QA is implied by these checks.

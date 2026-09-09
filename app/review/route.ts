@@ -4,7 +4,7 @@ import { dashboardHtml } from '../../lib/dashboard-html';
 import { reviewView,reviewPath } from '../../public/review-queue.js';
 export const dynamic='force-dynamic';
 export async function GET(request:Request){try{
-  await owner();return new Response(dashboardHtml,{headers:{...responseHeaders,'Content-Type':'text/html; charset=utf-8'}});
+  await owner();return new Response(dashboardHtml.replace('<div class="tools">','<div class="tools"><a href="/review/sales">Slow-selling items</a>'),{headers:{...responseHeaders,'Content-Type':'text/html; charset=utf-8'}});
 }catch(error){
   if(error instanceof ReviewError&&error.status===401){
     const returnTo=reviewPath(reviewView(new URL(request.url).search));
