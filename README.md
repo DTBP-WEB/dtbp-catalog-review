@@ -9,6 +9,8 @@ Open the hosted dashboard and sign in with the owner ChatGPT account. The public
 - Website items to check and other items not on the website are separate queues.
 - Search by SKU, title, brand or issue.
 - Choose OK, No, Needs changes, or Save for later.
+- Save for later moves the item out of both main queues and onto its own page at `/review?view=later`, with all entered values and notes saved.
+- Earlier Save for later choices appear there automatically. Approving, declining or requesting changes removes an item from that page; its saved decision and history remain available.
 - Decisions persist in this site's isolated D1 database, including an audit history.
 - Stale tabs cannot overwrite newer decisions.
 - Download an export for a later, separately reviewed integration into the website.
@@ -30,7 +32,7 @@ Node 22.13+ and the locked npm dependencies are required.
 ```sh
 npm run install:ci
 npm run dev
-node --test tests/review-core.test.mjs
+node --test tests/*.test.mjs
 npx tsc --noEmit
 npm run build
 ```
@@ -44,3 +46,5 @@ Hosted values are managed through Sites, not committed files: `REVIEW_OWNER_EMAI
 `scripts/prepare-private-import.mjs` reads an existing owner reviewer without changing it. It selects only held/outside rows, preserves original identifiers and fingerprints, and emits ignored private files. It never imports or publishes automatically. A secured, complete import is verified by content hash before enabling the review.
 
 Existing local approvals remain in the original project. Remote decisions form a separate history; reconcile exact identifiers and fingerprints before applying any future website changes.
+
+Saved for later is a display-only classification of a matching saved `pending` decision. Unreviewed items have no matching saved decision. This distinction requires no migration, reimport or rewriting existing choices, and keeps older open tabs and exports compatible. Stale fingerprints still require review; a deferred decision is not approval.
