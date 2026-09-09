@@ -1,0 +1,23 @@
+// Read the existing owner reviewer. Generated output is PRIVATE and ignored by Git.
+import { readFile,writeFile,mkdir } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { resolve,join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+const [sourceArg,outArg]=process.argv.slice(2);
+if(!sourceArg||!outArg)throw new Error('Provide source website repository and private output directory.');
+const source=resolve(sourceArg),out=resolve(outArg);
+if(!out.endsWith('dtbp-catalog-review\\private')&&!out.endsWith('dtbp-catalog-review/private'))throw new Error('Use the ignored standalone private directory.');
+const {loadOwnerReview}=await import(pathToFileURL(join(source,'scripts/catalog/owner-review-server.mjs')));
+const dataset=await loadOwnerReview();
+const savedBytes=await readFile(join(source,'reports/catalog-owner-review/review.json'));
+const saved=JSON.parse(savedBytes);
+const allowed=['id','websiteProductId','inflowProductId','group','website','source','laterSource','sourceCandidates','sku','name','brand','issues','proposed','proposalNote','priority','beforeFingerprint','research','fingerprint','compatibleFingerprints','batchHold'];
+const items=dataset.items.filter(r=>['held','outside'].includes(r.group)&&!r.applied).map(r=>Object.fromEntries(allowed.filter(k=>k in r).map(k=>[k,r[k]])));
+const hash=(bytes)=>createHash('sha256').update(bytes).digest('hex');
+const metadata={version:1,snapshotAt:dataset.snapshotAt,datasetFingerprint:dataset.datasetFingerprint,remoteItemsFingerprint:hash(JSON.stringify(items)),expectedCount:items.length,sourceLocalRevision:saved.revision,sourceLocalSaveHash:hash(savedBytes),counts:Object.fromEntries(['held','outside'].map(g=>[g,items.filter(r=>r.group===g).length])),scope:'Standalone owner review only. No publication or inFlow writes.'};
+const seed={metadata,items:items.map((item,position)=>({item,position,...(saved.decisions[item.id]?{decision:saved.decisions[item.id]}:{})}))};
+await mkdir(out,{recursive:true});
+await writeFile(join(out,'seed.json'),JSON.stringify(seed));
+await writeFile(join(out,'original-local-decisions.json'),savedBytes);
+if(hash(await readFile(join(source,'reports/catalog-owner-review/review.json')))!==metadata.sourceLocalSaveHash)throw new Error('Local review changed during extraction; repeat the snapshot before import.');
+console.log(JSON.stringify({counts:metadata.counts,total:items.length,sourceRevision:saved.revision,preservedDecisions:Object.keys(saved.decisions).length,carriedDecisionCount:seed.items.filter(r=>r.decision).length,itemsHash:metadata.remoteItemsFingerprint,sourceSaveHash:metadata.sourceLocalSaveHash}));

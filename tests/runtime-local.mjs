@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict';
+import { createHash,randomUUID } from 'node:crypto';
+const base='http://127.0.0.1:5540';
+const headers={'Content-Type':'application/json',Origin:base};
+const get=(path,extra={})=>fetch(base+path,{redirect:'manual',...extra});
+assert.equal((await get('/')).status,200);
+for(const path of ['/api/review','/api/export','/api/identity'])assert.equal((await get(path)).status,401,path);
+assert.equal((await get('/api/decision',{method:'POST',headers,body:'{}'})).status,401);
+assert.equal((await get('/api/import',{method:'POST',headers,body:'{}'})).status,401);
+const item={id:'website:00000000-0000-4000-8000-000000000001',websiteProductId:'00000000-0000-4000-8000-000000000001',inflowProductId:null,group:'held',website:{sku:'TEST-01',name:'Example part',brand:'Example'},source:null,sku:'TEST-01',name:'Example part',brand:'Example',issues:[{code:'title-needs-correction',issue:'Check this invented title.',fix:'Confirm the example title.'}],proposed:{sku:'TEST-01',name:'Example part',brand:'Example'},proposalNote:'Invented test record.',sourceCandidates:[],fingerprint:'a'.repeat(64),compatibleFingerprints:[]};
+const fp='b'.repeat(64),hash=createHash('sha256').update(JSON.stringify([item])).digest('hex');
+async function seed(input){const r=await get('/api/import',{method:'POST',headers:{...headers,authorization:'Bearer local-test-only-0000000000000000000000000000000000000000000000000'},body:JSON.stringify({...input,datasetFingerprint:fp})});const body=await r.json();assert.equal(r.status,200,JSON.stringify(body));return body;}
+await seed({action:'begin',metadata:{datasetFingerprint:fp,remoteItemsFingerprint:hash,expectedCount:1}});
+await seed({action:'items',items:[{item,position:0}]});
+await seed({action:'finish'});
+const signin=await get('/signin-with-chatgpt?return_to=%2Freview');
+const cookie=signin.headers.getSetCookie().map(v=>v.split(';')[0]).join('; ');assert.ok(cookie);
+const authed={Cookie:cookie};
+const page=await get('/review',{headers:authed});assert.equal(page.status,200);assert.match(page.headers.get('x-robots-tag'),/noindex/);
+const data=await (await get('/api/review',{headers:authed})).json();assert.equal(data.items.length,1);assert.equal(data.revision,0);
+const input={id:item.id,fingerprint:item.fingerprint,revision:0,requestId:randomUUID(),decision:'ok',fields:item.proposed,note:'Invented local test only.'};
+const save=await get('/api/decision',{method:'POST',headers:{...headers,...authed},body:JSON.stringify(input)});assert.equal(save.status,200,await save.clone().text());assert.equal((await save.json()).revision,1);
+const exportResponse=await get('/api/export',{headers:authed});assert.equal(exportResponse.status,200);const backup=await exportResponse.json();assert.equal(backup.decisions[item.id].decision,'ok');assert.equal(backup.history.length,1);
+assert.equal((await get('/api/decision',{method:'POST',headers:{...headers,...authed,Origin:'https://attacker.example'},body:JSON.stringify(input)})).status,403);
+const stale={...input,requestId:randomUUID()};assert.equal((await get('/api/decision',{method:'POST',headers:{...headers,...authed},body:JSON.stringify(stale)})).status,409);
+assert.equal((await get('/api/import',{method:'POST',headers:{...headers,authorization:'Bearer local-test-only-0000000000000000000000000000000000000000000000000'},body:JSON.stringify({action:'begin'})})).status,409);
+const final=await (await get('/api/review',{headers:authed})).json();assert.equal(final.revision,1);assert.equal(final.decisions[item.id].note,input.note);
+console.log('PASS: anonymous gates, authenticated review, online save/readback/export, stale-tab protection, CSRF and sealed import. Invented local test record only.');
