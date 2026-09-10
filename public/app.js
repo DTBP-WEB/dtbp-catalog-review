@@ -19,6 +19,7 @@ function renderGroups(){
   $('page-title').textContent=group==='later'?'Saved for later':'Items to check';
   $('page-subtitle').textContent=group==='later'?'Your saved items, edits and notes are kept here until you are ready. Nothing publishes from here.':'Review the issue, choose OK or tell me what to fix. Save for later moves an item to its own page.';
   document.title=group==='later'?'DTBP · Saved for later':'DTBP · Catalog review';
+  if(data.activeOnly) $('page-subtitle').textContent+=' Only verified-active items are shown (checked '+data.activeOnly.checkedAt.slice(0,10)+'). Hidden items and saved history are preserved.';
   $('groups').innerHTML=Object.entries({held:'Website items to check',outside:'Other items not on website',later:'Saved for later'}).map(([key,label])=>`<button class="tab ${group===key?'active':''}" data-group="${key}" aria-current="${group===key?'page':'false'}">${label} · ${filterReviewItems(data.items,data.decisions,{group:key}).length.toLocaleString()}</button>`).join('');
   $('groups').querySelectorAll('[data-group]').forEach((button)=>button.onclick=()=>{if(!selectionAllowed())return;setGroup(button.dataset.group);applyFilters();document.body.classList.remove('detail-open');});
 }

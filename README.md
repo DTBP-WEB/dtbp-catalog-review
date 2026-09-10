@@ -13,6 +13,9 @@ Open the hosted dashboard and sign in with the owner ChatGPT account. The public
 - Earlier Save for later choices appear there automatically. Approving, declining or requesting changes removes an item from that page; its saved decision and history remain available.
 - Decisions persist in this site's isolated D1 database, including an audit history.
 - Stale tabs cannot overwrite newer decisions.
+- The review queue shows only items verified active in the latest installed
+  inFlow status check. Inactive and unverified identities are hidden from every
+  review view, including Save for later, without deleting their saved history.
 - Download an export for a later, separately reviewed integration into the website.
 
 Nothing here publishes products, alters prices/stock, changes inFlow, approves image rights or deploys the DTBP storefront. This is not a store or a public product catalog.
@@ -40,6 +43,16 @@ npm run build
 Generate schema migrations with `npm run db:generate`. Apply generated migrations to the local preview database before running the local runtime test. `tests/runtime-local.mjs` uses only an invented fixture on loopback port 5540 and assumes a fresh local database with the documented test-only identity.
 
 Hosted values are managed through Sites, not committed files: `REVIEW_OWNER_EMAIL` and the one-time `REVIEW_IMPORT_KEY`. Use the bundled dispatch-owned sign-in helpers. The local preview identity is not a hosted authentication bypass.
+
+`REVIEW_ACTIVE_STATUS` is a private runtime setting containing a status bitmap,
+capture timestamp, record count and sealed-import hash (no product identities).
+Its positions must match the immutable imported item order exactly. Missing or
+incompatible evidence fails closed; do not silently use old source flags.
+This is a point-in-time check, not continuous inFlow synchronization. Refresh
+the read-only evidence and deploy the separately approved setting when needed.
+The API filters items server-side and rejects stale-tab saves for hidden items.
+The full decision/history export is intentionally unfiltered. No migration or
+rewriting of review tables is required.
 
 ## Data portability
 
