@@ -53,6 +53,8 @@ the read-only evidence and deploy the separately approved setting when needed.
 The API filters items server-side and rejects stale-tab saves for hidden items.
 The full decision/history export is intentionally unfiltered. No migration or
 rewriting of review tables is required.
+Deployment archives must contain each existing migration only once; never nest
+an extra `drizzle` directory inside the generated migration directory.
 
 ## Data portability
 
